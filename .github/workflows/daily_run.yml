@@ -51,9 +51,20 @@ jobs:
             exit 0
           fi
           git commit -m "chore: update leads.csv [skip ci]"
-          # Retry push up to 3 times in case of a race
+
+          # Retry push up to 3 times with proper rebase handling
           for i in 1 2 3; do
-            git pull --rebase origin main && git push && break
-            echo "Push attempt $i failed, retrying in 5s..."
-            sleep 5
+            if git pull --rebase origin main; then
+              if git push; then
+                echo "Push succeeded on attempt $i"
+                break
+              else
+                echo "Push failed on attempt $i, retrying in 5s..."
+                sleep 5
+              fi
+            else
+              echo "Rebase failed on attempt $i, retrying in 5s..."
+              git rebase --abort
+              sleep 5
+            fi
           done
