@@ -1,0 +1,44 @@
+name: Daily Startup Cold Email Run
+
+on:
+  schedule:
+    - cron: "0 9 * * *"   # 09:00 UTC every day
+  workflow_dispatch:        # Allow manual trigger from the Actions tab
+
+jobs:
+  run-automation:
+    runs-on: ubuntu-latest
+    permissions:
+      contents: write       # Needed to commit leads.csv back to the repo
+
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+        with:
+          token: ${{ secrets.GITHUB_TOKEN }}
+
+      - name: Set up Python 3.11
+        uses: actions/setup-python@v5
+        with:
+          python-version: "3.11"
+          cache: "pip"
+
+      - name: Install dependencies
+        run: pip install -r requirements.txt
+
+      - name: Run automation
+        env:
+          APOLLO_API_KEY: ${{ secrets.APOLLO_API_KEY }}
+          GEMINI_API_KEY: ${{ secrets.GEMINI_API_KEY }}
+          GMAIL_USER: ${{ secrets.GMAIL_USER }}
+          GMAIL_PASS: ${{ secrets.GMAIL_PASS }}
+        run: python main.py
+
+      - name: Commit updated leads.csv
+        run: |
+          git config user.name  "github-actions[bot]"
+          git config user.email "github-actions[bot]@users.noreply.github.com"
+          git add leads.csv
+          # Only commit if the file actually changed
+          git diff --staged --quiet || git commit -m "chore: update leads.csv [skip ci]"
+          git push
